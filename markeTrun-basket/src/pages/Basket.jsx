@@ -39,7 +39,15 @@ function Basket({ cart, setCart , goToCheckout , setToastMessage }) {
         <div className="basket-items">
           {cart.map((item) => (
             <div key={item.id} className="basket-item">
-              <img src={item.image} alt={item.name} width={80} />
+
+              <img  src={item.image || "/placeholder.png"}
+               alt={item.name} width={80}
+                style={{
+                  height: "80px",
+                  objectFit: "cover",
+                  borderRadius: "8px"
+                }}
+                onError={(e) => (e.target.src = "/placeholder.png")} />
               <div className="item-info">
                 <h3>{item.name}</h3>
                 <p>₦{item.price}</p>

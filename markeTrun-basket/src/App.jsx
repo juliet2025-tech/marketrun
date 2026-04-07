@@ -131,7 +131,8 @@ function App() {
       name: customOrder.name,
       quantity: customOrder.quantity,
       notes: customOrder.notes,
-      price: customOrder.price
+      price: customOrder.price ,
+      image: "/placeholder.png"
     };
 
     setCart([...cart, newItem]);
@@ -287,38 +288,20 @@ function App() {
   </label>
 
 
-   <label>
-                Upload Image:
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setCustomOrder({
-                          ...customOrder,
-                          image: reader.result
-                        });
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                />
-              </label>
+  
 
               {customOrder.image && (
-                <img
-                  src={customOrder.image}
-                  alt="preview"
-                  style={{
-                    width: "100%",
-                    height: "120px",
-                    objectFit: "cover",
-                    borderRadius: "8px"
-                  }}
-                />
+               <img
+  src={customOrder.image || "/placeholder.png"}
+  alt="preview"
+  style={{
+    width: "100%",
+    height: "120px",
+    objectFit: "cover",
+    borderRadius: "8px"
+  }}
+  onError={(e) => { e.target.src = "/placeholder.png"; }}
+/>
               )}
 
 
