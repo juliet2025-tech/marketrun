@@ -1,33 +1,75 @@
 import React, { useState, useEffect } from "react";
 
+// ✅ YOUR ORDER API
+const ORDER_API = "https://sheetdb.io/api/v1/lsiil5o8chh5a";
+
 function Checkout({ cart, setCart, goToHome }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
 
-  // ✅ State for professional success popup
+  // ✅ Success popup
   const [successMessage, setSuccessMessage] = useState("");
 
   const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
-  // ✅ Service fee = 10% OR ₦500 (whichever is higher)
+  // ✅ Service fee
   const serviceFee = Math.max(500, total * 0.1);
 
-  // ✅ Final total including service fee
+  // ✅ Final total
   const finalTotal = total + serviceFee;
 
-  // ✅ Load cart from localStorage on mount
+  // ✅ Load cart
   useEffect(() => {
     const savedCart = JSON.parse(localStorage.getItem("cart"));
     if (savedCart) setCart(savedCart);
   }, [setCart]);
 
-  // ✅ Save cart to localStorage whenever cart changes
+  // ✅ Save cart
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
   }, [cart]);
 
-  const handleSubmit = (e) => {
+  // ✅ SEND ORDER TO SHEET
+  const sendOrderToSheet = async () => {
+    const orderId = Date.now();
+    const date = new Date().toLocaleString();
+
+    // ✅ OPTION A FORMAT (each item on new line)
+    let summary = "";
+    cart.forEach((item, i) => {
+      summary += `${i + 1}. ${item.name} x${item.quantity} - ₦${item.price}\n`;
+    });
+
+    const orderData = {
+      order_id: orderId,
+      customer_name: name,
+      customer_phone: phone,
+      delivery_address: address,
+      order_summary: summary,
+      total: total,
+      service_fee: serviceFee,
+      final_total: finalTotal,
+      date: date
+    };
+
+    try {
+      const res = await fetch(ORDER_API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ data: orderData })
+      });
+
+      const data = await res.json();
+      console.log("✅ Order saved:", data);
+    } catch (error) {
+      console.error("❌ Error sending order:", error);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!name || !phone || !address) {
@@ -35,26 +77,31 @@ function Checkout({ cart, setCart, goToHome }) {
       return;
     }
 
-    // Show professional success popup
+    // ✅ Send order
+    await sendOrderToSheet();
+
+    // ✅ Success popup
     setSuccessMessage(`Thank you, ${name}! Your order of ₦${finalTotal} has been received.`);
 
-    // Clear cart and go home after 2.5s
+    // ✅ Clear cart
     setTimeout(() => {
       setCart([]);
-      localStorage.removeItem("cart"); // ✅ clear from localStorage
+      localStorage.removeItem("cart");
       goToHome();
-      setSuccessMessage(""); // hide popup
+      setSuccessMessage("");
     }, 2500);
   };
 
   return (
     <div style={{ padding: "1rem" }}>
       <h2>Checkout</h2>
+
       {cart.length === 0 ? (
         <p>Your basket is empty</p>
       ) : (
         <div>
           <h3>Order Summary</h3>
+
           <ul>
             {cart.map(item => (
               <li key={item.id}>
@@ -62,6 +109,7 @@ function Checkout({ cart, setCart, goToHome }) {
               </li>
             ))}
           </ul>
+
           <h3>Total: ₦{total}</h3>
           <p>Service Fee: ₦{serviceFee}</p>
           <h3>Final Total: ₦{finalTotal}</h3>
@@ -82,17 +130,20 @@ function Checkout({ cart, setCart, goToHome }) {
               value={name}
               onChange={e => setName(e.target.value)}
             />
+
             <input
               type="text"
               placeholder="Phone Number"
               value={phone}
               onChange={e => setPhone(e.target.value)}
             />
+
             <textarea
               placeholder="Delivery Address"
               value={address}
               onChange={e => setAddress(e.target.value)}
             />
+
             <button
               type="submit"
               style={{
@@ -109,7 +160,7 @@ function Checkout({ cart, setCart, goToHome }) {
         </div>
       )}
 
-      {/* ✅ Professional success popup */}
+      {/* ✅ Success Popup */}
       {successMessage && (
         <div
           style={{
@@ -130,7 +181,7 @@ function Checkout({ cart, setCart, goToHome }) {
         </div>
       )}
 
-      {/* ✅ Simple fade in/out animation for popup */}
+      {/* ✅ Animation */}
       <style>
         {`
           @keyframes fadeInOut {
