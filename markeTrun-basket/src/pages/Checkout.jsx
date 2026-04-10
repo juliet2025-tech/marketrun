@@ -1,76 +1,30 @@
+import React, { useState } from "react";
 
-import React, { useState, useEffect } from "react";
-
-// ✅ YOUR ORDER API
 const ORDER_API = "https://sheetdb.io/api/v1/lsiil5o8chh5a";
 
 function Checkout({ cart, setCart, goToHome }) {
+  const [step, setStep] = useState(1);
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
 
-  // ✅ Success popup
-  const [successMessage, setSuccessMessage] = useState("");
+  const [orderId, setOrderId] = useState("");
+  const [orderSent, setOrderSent] = useState(false);
 
-  const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  // ================= CALCULATION =================
+  const total = cart.reduce((acc, item) => {
+    return acc + Number(item.price) * Number(item.quantity);
+  }, 0);
 
-  // ✅ Service fee
   const serviceFee = Math.max(500, total * 0.1);
-
-  // ✅ Final total
   const finalTotal = total + serviceFee;
 
-  // ✅ Load cart
-  useEffect(() => {
-    const savedCart = JSON.parse(localStorage.getItem("cart"));
-    if (savedCart) setCart(savedCart);
-  }, [setCart]);
+  // ================= SNAPSHOT STATE (IMPORTANT FIX) =================
+  const [snapshot, setSnapshot] = useState(null);
 
-  // ✅ Save cart
-  useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cart));
-  }, [cart]);
-
-  // ✅ SEND ORDER TO SHEET
-  const sendOrderToSheet = async () => {
-    const orderId = Date.now();
-    const date = new Date().toLocaleString();
-
-    // ✅ OPTION A FORMAT (each item on new line)
-    let summary = "";
-    cart.forEach((item, i) => {
-      summary += `${i + 1}. ${item.name} x${item.quantity} - ₦${item.price}\n`;
-    });
-
-    const orderData = {
-      order_id: orderId,
-      customer_name: name,
-      customer_phone: phone,
-      delivery_address: address,
-      order_summary: summary,
-      total: total,
-      service_fee: serviceFee,
-      final_total: finalTotal,
-      date: date
-    };
-
-    try {
-      const res = await fetch(ORDER_API, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ data: orderData })
-      });
-
-      const data = await res.json();
-      console.log("✅ Order saved:", data);
-    } catch (error) {
-      console.error("❌ Error sending order:", error);
-    }
-  };
-
-  const handleSubmit = async (e) => {
+  // ================= STEP 1 =================
+  const handleContinue = (e) => {
     e.preventDefault();
 
     if (!name || !phone || !address) {
@@ -78,121 +32,194 @@ function Checkout({ cart, setCart, goToHome }) {
       return;
     }
 
-    // ✅ Send order
-    await sendOrderToSheet();
-
-    // ✅ Success popup
-    setSuccessMessage(`Thank you, ${name}! Your order of ₦${finalTotal} has been received.`);
-
-    // ✅ Clear cart
-    setTimeout(() => {
-      setCart([]);
-      localStorage.removeItem("cart");
-      goToHome();
-      setSuccessMessage("");
-    }, 2500);
+    setStep(2);
   };
 
+  // ================= STEP 2 =================
+  const handlePlaceOrder = async () => {
+    const id = `ORD-${Date.now()}`;
+
+    // 🔥 TAKE SNAPSHOT BEFORE CLEARING CART
+    const orderSnapshot = {
+      cartSnapshot: [...cart],
+      totalSnapshot: total,
+      serviceSnapshot: serviceFee,
+      finalSnapshot: finalTotal,
+      name,
+      phone
+    };
+
+    setSnapshot(orderSnapshot);
+    setOrderId(id);
+
+    // ================= SAVE TO SHEET =================
+    const summary = cart
+      .map(
+        (item, i) =>
+          `${i + 1}. ${item.name} x${item.quantity} - ₦${
+            item.price * item.quantity
+          }`
+      )
+      .join("\n");
+
+    await fetch(ORDER_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        data: {
+          order_id: id,
+      date: new Date().toLocaleString(),
+
+      customer_name: snapshot.name,
+      customer_phone: snapshot.phone,
+      delivery_address: address,
+
+      order_summary: summary,
+
+      total: snapshot.totalSnapshot,
+      service_fee: snapshot.serviceSnapshot,
+      total_amount: snapshot.finalSnapshot,
+
+      payment_method: "Bank Transfer",
+      payment_status: "Pending",
+      delivery_status: "Yet to Deliver"
+          
+        },
+      }),
+    });
+
+    // ================= CLEAR CART AFTER SNAPSHOT =================
+    setCart([]);
+    localStorage.removeItem("cart");
+
+    setOrderSent(true);
+  };
+
+  // ================= WHATSAPP MESSAGE (FIXED) =================
+  const whatsappMessage = `Hello, I just placed an order.
+
+Order ID: ${orderId}
+Name: ${name}
+Phone: ${phone}
+
+Total: ₦${snapshot?.totalSnapshot || 0}
+Service Fee: ₦${snapshot?.serviceSnapshot || 0}
+Amount Paid: ₦${snapshot?.finalSnapshot || 0}
+
+I have made payment.`;
+
+  const whatsappLink = `https://wa.me/2347026174894?text=${encodeURIComponent(
+    whatsappMessage
+  )}`;
+
   return (
-    <div style={{ padding: "1rem" }}>
+    <div style={{ padding: "1rem", maxWidth: "500px", margin: "auto" }}>
       <h2>Checkout</h2>
 
-      {cart.length === 0 ? (
-        <p>Your basket is empty</p>
-      ) : (
-        <div>
+      {/* ================= STEP 1 ================= */}
+      {step === 1 && (
+        <>
           <h3>Order Summary</h3>
 
-          <ul>
-            {cart.map(item => (
-              <li key={item.id}>
-                {item.name} x {item.quantity} = ₦{item.price * item.quantity}
-              </li>
-            ))}
-          </ul>
+          {cart.map((item) => (
+            <p key={item.id}>
+              {item.name} x {item.quantity} = ₦
+              {item.price * item.quantity}
+            </p>
+          ))}
 
           <h3>Total: ₦{total}</h3>
           <p>Service Fee: ₦{serviceFee}</p>
           <h3>Final Total: ₦{finalTotal}</h3>
 
-          <form
-            onSubmit={handleSubmit}
-            style={{
-              marginTop: "1rem",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.5rem",
-              maxWidth: "400px"
-            }}
-          >
+          <form onSubmit={handleContinue}>
             <input
-              type="text"
               placeholder="Full Name"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value)}
+              style={{ width: "100%", marginBottom: "10px" }}
             />
 
             <input
-              type="text"
               placeholder="Phone Number"
               value={phone}
-              onChange={e => setPhone(e.target.value)}
+              onChange={(e) => setPhone(e.target.value)}
+              style={{ width: "100%", marginBottom: "10px" }}
             />
 
             <textarea
               placeholder="Delivery Address"
               value={address}
-              onChange={e => setAddress(e.target.value)}
+              onChange={(e) => setAddress(e.target.value)}
+              style={{ width: "100%", marginBottom: "10px" }}
             />
 
-            <button
-              type="submit"
-              style={{
-                padding: "0.5rem",
-                background: "#ff6600",
-                color: "white",
-                border: "none",
-                cursor: "pointer"
-              }}
-            >
-              Place Order
+            <button type="submit" style={{ width: "100%" }}>
+              Continue to Payment
             </button>
           </form>
-        </div>
+        </>
       )}
 
-      {/* ✅ Success Popup */}
-      {successMessage && (
-        <div
-          style={{
-            position: "fixed",
-            top: "2rem",
-            right: "2rem",
-            background: "#4caf50",
-            color: "white",
-            padding: "1rem 1.5rem",
-            borderRadius: "10px",
-            boxShadow: "0px 5px 15px rgba(0,0,0,0.3)",
-            fontWeight: "bold",
-            zIndex: 9999,
-            animation: "fadeInOut 2.5s ease-in-out"
-          }}
-        >
-          ✅ {successMessage}
-        </div>
+      {/* ================= STEP 2 ================= */}
+      {step === 2 && !orderSent && (
+        <>
+          <h3>Payment Details</h3>
+
+          <div style={{ background: "#f5f5f5", padding: "1rem" }}>
+            <p><b>Bank:</b> Opay</p>
+            <p><b>Account Name:</b> CHIBUNDO JULIET OJIDE</p>
+            <p><b>Account Number:</b> 7026174894</p>
+          </div>
+
+          <h3>Amount to Pay: ₦{finalTotal}</h3>
+
+          <button
+            onClick={handlePlaceOrder}
+            style={{
+              width: "100%",
+              marginTop: "1rem",
+              padding: "10px",
+              background: "black",
+              color: "white",
+            }}
+          >
+            I Have Made Payment
+          </button>
+        </>
       )}
 
-      {/* ✅ Animation */}
-      <style>
-        {`
-          @keyframes fadeInOut {
-            0% {opacity: 0; transform: translateY(-10px);}
-            10% {opacity: 1; transform: translateY(0);}
-            90% {opacity: 1; transform: translateY(0);}
-            100% {opacity: 0; transform: translateY(-10px);}
-          }
-        `}
-      </style>
+      {/* ================= SUCCESS ================= */}
+      {orderSent && (
+        <>
+          <h2>Order Successful ✅</h2>
+          <p><b>Order ID:</b> {orderId}</p>
+
+          <a
+            href={whatsappLink}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: "block",
+              marginTop: "1rem",
+              background: "#25D366",
+              color: "white",
+              padding: "12px",
+              textAlign: "center",
+              borderRadius: "8px",
+            }}
+          >
+            Send Receipt on WhatsApp
+          </a>
+
+          <button
+            onClick={goToHome}
+            style={{ marginTop: "1rem", width: "100%", padding: "10px" }}
+          >
+            Back to Home
+          </button>
+        </>
+      )}
     </div>
   );
 }
