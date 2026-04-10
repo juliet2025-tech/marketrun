@@ -37,7 +37,13 @@ function Checkout({ cart, setCart, goToHome }) {
 
   // ================= STEP 2 =================
   const handlePlaceOrder = async () => {
+      console.log("🔥 HANDLE PLACE ORDER FIRED");
     const id = `ORD-${Date.now()}`;
+
+  console.log("ORDER ID:", id);
+  console.log("TOTAL:", total);
+  console.log("SERVICE:", serviceFee);
+  console.log("FINAL:", finalTotal);
 
     // 🔥 TAKE SNAPSHOT BEFORE CLEARING CART
     const orderSnapshot = {
@@ -62,39 +68,41 @@ function Checkout({ cart, setCart, goToHome }) {
       )
       .join("\n");
 
-    await fetch(ORDER_API, {
+     // 🔥 FIRE AND FORGET FETCH (NO await)
+    fetch(ORDER_API, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         data: {
           order_id: id,
-      date: new Date().toLocaleString(),
+          date: new Date().toLocaleString(),
 
-      customer_name: snapshot.name,
-      customer_phone: snapshot.phone,
-      delivery_address: address,
+          customer_name: name,
+          customer_phone: phone,
+          delivery_address: address,
 
-      order_summary: summary,
+          order_summary: summary,
 
-      total: snapshot.totalSnapshot,
-      service_fee: snapshot.serviceSnapshot,
-      total_amount: snapshot.finalSnapshot,
+          total: total,
+          service_fee: serviceFee,
+          total_amount: finalTotal,
 
-      payment_method: "Bank Transfer",
-      payment_status: "Pending",
-      delivery_status: "Yet to Deliver"
-          
+          payment_method: "Bank Transfer",
+          payment_status: "Pending",
+          delivery_status: "Yet to Deliver",
         },
       }),
-    });
+    })
+      .then((res) => res.json())
+      .then((data) => console.log("✅ SAVED:", data))
+      .catch((err) => console.error("❌ ERROR:", err));
 
-    // ================= CLEAR CART AFTER SNAPSHOT =================
+    // UI updates instantly
     setCart([]);
     localStorage.removeItem("cart");
-
     setOrderSent(true);
   };
-
+  
   // ================= WHATSAPP MESSAGE (FIXED) =================
   const whatsappMessage = `Hello, I just placed an order.
 
@@ -175,6 +183,7 @@ I have made payment.`;
           <h3>Amount to Pay: ₦{finalTotal}</h3>
 
           <button
+          type="button"
             onClick={handlePlaceOrder}
             style={{
               width: "100%",

@@ -6,12 +6,19 @@ import Footer from "./components/Footer";
 import Basket from "./pages/Basket";
 import Checkout from "./pages/Checkout";
 import "./styles/global.css";
-import { fetchProducts, } from "./api/sheetdb";
-
+import { fetchProducts, addOrder } from "./api/sheetdb";
 
 function App() {
-  // ================= CART STATE =================
-  const [cart, setCart] = useState([]);
+
+  // ================= CART STATE (FIXED PERSISTENCE) =================
+  const [cart, setCart] = useState(() => {
+    // FIX: load directly from localStorage on FIRST render
+    try {
+      return JSON.parse(localStorage.getItem("cart")) || [];
+    } catch (error) {
+      return [];
+    }
+  });
 
   // ================= TOAST =================
   const [toastMessage, setToastMessage] = useState("");
@@ -52,25 +59,19 @@ function App() {
     loadProducts();
   }, []);
 
-  // ================= LOAD CART (FIXED) =================
-  useEffect(() => {
-    const savedCart = JSON.parse(localStorage.getItem("cart") || "[]");
-    setCart(savedCart);
-  }, []);
-
-  // ================= SAVE CART =================
+  // ================= SAVE CART (SAFE + RELIABLE) =================
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
   }, [cart]);
 
-  // ================= TOAST AUTO HIDE =================
+  // ================= TOAST =================
   useEffect(() => {
     if (!toastMessage) return;
     const timer = setTimeout(() => setToastMessage(""), 2000);
     return () => clearTimeout(timer);
   }, [toastMessage]);
 
-  // ================= ADD TO CART (FIXED) =================
+  // ================= ADD TO CART =================
   const addToCart = (product) => {
     const existing = cart.find(item => item.id === product.id);
 
@@ -87,6 +88,8 @@ function App() {
     }
 
     setCart(updatedCart);
+
+    // FIX: instant sync (extra safety)
     localStorage.setItem("cart", JSON.stringify(updatedCart));
 
     setToastMessage(`${product.name} added to basket`);
@@ -129,7 +132,6 @@ function App() {
   const goToHome = () => setCurrentPage("home");
   const goToBasket = () => setCurrentPage("basket");
   const goToCheckout = () => setCurrentPage("checkout");
-  
 
   // ================= MODAL =================
   const openModal = () => setIsModalOpen(true);
@@ -153,7 +155,6 @@ function App() {
         goToHome={goToHome}
         goToBasket={goToBasket}
         goToCheckout={goToCheckout}
-        
         cartCount={cart.length}
       />
 
@@ -220,9 +221,6 @@ function App() {
             goToHome={goToHome}
           />
         )}
-
-        {/* ORDERS */}
-        
 
       </main>
 
