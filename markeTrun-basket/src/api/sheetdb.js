@@ -1,25 +1,28 @@
-// src/api/sheetdb.js
 import axios from "axios";
 
-const API_URL = "https://sheetdb.io/api/v1/m0zl4zruvue3r";
+// ✅ Products Sheet
+const PRODUCTS_API = "https://sheetdb.io/api/v1/m0zl4zruvue3r";
 
-// Fetch all products/orders
+// ✅ Orders Sheet
+const ORDERS_API = "https://sheetdb.io/api/v1/lsiil5o8chh5a";
+
+// Fetch all products
 export const fetchProducts = async () => {
   try {
-    const res = await axios.get(API_URL);
-    return res.data; // SheetDB returns array of objects
+    const res = await axios.get(PRODUCTS_API);
+    return res.data; // Returns array of products
   } catch (err) {
-    console.error("Error fetching from SheetDB:", err);
+    console.error("Error fetching products:", err);
     return [];
   }
 };
 
-// Add an order to the sheet
+// Add an order (custom or normal) to Orders Sheet
 export const addOrder = async (order) => {
   try {
-    const res = await axios.post(API_URL, { data: order });
+    const res = await axios.post(ORDERS_API, { data: order });
     return res.data;
   } catch (err) {
-    console.error("Error adding order to SheetDB:", err);
+    console.error("Error adding order:", err);
   }
 };

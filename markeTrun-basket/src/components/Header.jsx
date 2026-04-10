@@ -1,6 +1,6 @@
 import React from "react";
 
-function Header({ goToHome, goToBasket, goToCheckout, cartCount }) {
+function Header({ goToHome, goToBasket, goToCheckout, cartCount , goToOrders, }) {
   return (
     <header className="header">
       <nav className="nav">
@@ -10,7 +10,7 @@ function Header({ goToHome, goToBasket, goToCheckout, cartCount }) {
           onClick={goToHome} 
           style={{ cursor: "pointer" }}
         >
-          MarketRun Basket
+          PureFoods
         </h1>
 
         {/* ✅ Navigation links */}
@@ -26,6 +26,8 @@ function Header({ goToHome, goToBasket, goToCheckout, cartCount }) {
           <li onClick={goToCheckout} style={{ cursor: "pointer" }}>
             Checkout
           </li>
+ 
+
         </ul>
       </nav>
     </header>
